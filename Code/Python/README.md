@@ -1,4 +1,4 @@
-[![Azure Notebooks](https://notebooks.azure.com/launch.svg)](https://notebooks.azure.com/gbohner/projects/ucl-introductiontomachinelearn)
+[![Azure Notebooks](https://notebooks.azure.com/launch.svg)](https://notebooks.azure.com/gbohner/projects/cambridge-talk-20190306)
 
 # Introduction To Machine Learning - Dimensionality Reduction
 Tutorial material for UCL's Introduction To Machine Learning course
