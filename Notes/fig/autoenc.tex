@@ -1,0 +1,83 @@
+\def\rvector(#1)#2{\rotatebox{#1}{\makebox(0,0)[lb]{\vector(1,0){#2}}}}
+
+\def\rxvector(#1,#2)#3{\rotatebox{#1}{\makebox(0,0)[lb]{%
+   \vrule height0pt depth0pt width#2\unitlength%
+   \vector(1,0){#3}}}} 
+
+\def\ellipse(#1)#2#3{\makebox(0,0){%
+  \includegraphics[width=#2\unitlength,height=#3\unitlength]{circle#1}}}
+
+
+\setlength{\unitlength}{1cm}
+\begin{picture}(10,14)(0,0)
+  \thicklines
+
+  \put(0,12){\makebox(0,0)[r]{\Blue{\shortstack{output\\ units}}}}
+  \put(1,12){\ellipse(3){1.5}{1.5}}
+  \put(1,12){\makebox(0,0)[c]{$\hat x_1$}}
+
+  \put(3,12){\ellipse(3){1.5}{1.5}}
+  \put(3,12){\makebox(0,0)[c]{$\hat x_2$}}
+
+  \put(5,12){\circle*{.2}}
+  \put(6,12){\circle*{.2}}
+  \put(7,12){\circle*{.2}}
+
+  \put(9,12){\ellipse(3){1.5}{1.5}}
+  \put(9,12){\makebox(0,0)[c]{$\hat x_D$}}
+
+  \put(10,9.5){\makebox(0,0)[l]{\PineGreen{\mathversion{bold}$\left.%
+    \vrule height2.5\unitlength depth2.5\unitlength width0pt%
+    \right\}$\alignmiddle{\shortstack{decoder\\ ``generation''}}}}}
+
+
+  \put(1,7){\makebox(0,0)[r]{\Blue{\shortstack{hidden\\ units}}}}
+  \put(2,7){\ellipse(3){1.5}{1.5}}
+  \put(2,7){\makebox(0,0)[c]{$y_1$}}
+  \put(2,7){\rxvector(100,.75){3.6}}
+  \put(2,7){\rxvector(80,.75){3.6}}
+  \put(2,7){\rxvector(35,.75){7}}
+
+
+  \put(4,7){\circle*{.2}}
+  \put(5,7){\circle*{.2}}
+  \put(6,7){\circle*{.2}}
+
+
+  \put(8,7){\ellipse(3){1.5}{1.5}}
+  \put(8,7){\makebox(0,0)[c]{$y_K$}}
+
+  \put(8,7){\rxvector(80,.75){3.6}}
+  \put(8,7){\rxvector(135,.75){5.5}}
+  \put(8,7){\rxvector(145,.75){7}}
+
+
+  \put(10,4.5){\makebox(0,0)[l]{\Red{\mathversion{bold}$\left.%
+    \vrule height2.5\unitlength depth2.5\unitlength width0pt%
+    \right\}$\alignmiddle{\shortstack{encoder\\ ``recognition''}}}}}
+
+
+  \put(0,2){\makebox(0,0)[r]{\Blue{\shortstack{input\\ units}}}}
+  \put(1,2){\ellipse(3){1.5}{1.5}}
+  \put(1,2){\makebox(0,0)[c]{$x_1$}}
+  \put(1,2){\rxvector(80,.75){3.6}}
+  \put(1,2){\rxvector(35,.75){7}}
+
+
+  \put(3,2){\ellipse(3){1.5}{1.5}}
+  \put(3,2){\makebox(0,0)[c]{$x_2$}}
+  \put(3,2){\rxvector(100,.75){3.6}}
+  \put(3,2){\rxvector(45,.75){5.5}}
+
+  \put(5,2){\circle*{.2}}
+  \put(6,2){\circle*{.2}}
+  \put(7,2){\circle*{.2}}
+
+  \put(9,2){\ellipse(3){1.5}{1.5}}
+  \put(9,2){\makebox(0,0)[c]{$x_D$}}
+  \put(9,2){\rxvector(100,.75){3.6}}
+  \put(9,2){\rxvector(145,.75){7}}
+
+
+\end{picture}
+

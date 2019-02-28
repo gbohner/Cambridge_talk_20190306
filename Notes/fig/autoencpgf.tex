@@ -1,0 +1,112 @@
+
+
+\begin{pgfpicture}{-3cm}{0cm}{13cm}{14cm}
+
+  % node circle radius
+  \def\rad{0.75cm}
+
+  % ellipses
+  \def\makedots#1#2#3#4#5{% start/end/fraction/spacing/dotsize
+    \pgfnodelabelrotated{#1}{#2}[#3][0pt]{%
+      \pgfcircle[fill]{\pgfpoint{-#4}{0mm}}{#5}
+      \pgfcircle[fill]{\pgforigin}{#5}
+      \pgfcircle[fill]{\pgfpoint{#4}{0mm}}{#5}
+    }}
+    
+
+  % draw a node
+  \def\makenode#1#2{%
+    \pgfcircle[stroke]{\pgfnodecenter{#1}}{\rad}
+    \pgfputat{\pgfnodecenter{#1}}{\pgfbox[center,center]{#2}}
+  }
+
+  \def\edge#1#2{%
+    \pgfnodeconnline{#1}{#2}
+  }
+
+  \def\directededges{%
+    \pgfclearstartarrow
+    \pgfsetendarrow{\pgfarrowsingle}
+  }
+  \def\undirectededges{%
+    \pgfclearstartarrow
+    \pgfclearendarrow
+  }
+
+
+
+  % where the nodes are
+
+  \pgfnodecircle{xh1}[virtual]{\pgfxy(1,12)}{\rad}
+  \pgfnodecircle{xh2}[virtual]{\pgfxy(3,12)}{\rad}
+  \pgfnodecircle{xhD}[virtual]{\pgfxy(9,12)}{\rad}
+
+  \pgfnodecircle{y1}[virtual]{\pgfxy(2,7)}{\rad}
+  \pgfnodecircle{yK}[virtual]{\pgfxy(8,7)}{\rad}
+
+  \pgfnodecircle{x1}[virtual]{\pgfxy(1,2)}{\rad}
+  \pgfnodecircle{x2}[virtual]{\pgfxy(3,2)}{\rad}
+  \pgfnodecircle{xD}[virtual]{\pgfxy(9,2)}{\rad}
+
+  \pgfsetlinewidth{0.5mm}
+
+
+  \pgfputat{\pgfrelative{\pgfxy(-1,0)}{\pgfnodecenter{xh1}}}{%
+    \pgfbox[right,center]{\Blue{\shortstack{output\\ units}}}%
+  }
+
+  \makenode{xh1}{$\hat x_1$}
+  \makenode{xh2}{$\hat x_2$}
+  \makedots{xh2}{xhD}{0.5}{10mm}{1mm}
+  \makenode{xhD}{$\hat x_D$}
+
+  \pgfputat{\pgfrelative{\pgfxy(-1,0)}{\pgfnodecenter{y1}}}{%
+    \pgfbox[right,center]{\Blue{\shortstack{hidden \\ units}}}%
+  }
+
+  \makenode{y1}{$y_1$}
+  \makedots{y1}{yK}{0.5}{10mm}{1mm}
+  \makenode{yK}{$y_K$}
+
+  \pgfputat{\pgfrelative{\pgfxy(-1,0)}{\pgfnodecenter{x1}}}{%
+    \pgfbox[right,center]{\Blue{\shortstack{input \\ units}}}%
+  }
+
+  \makenode{x1}{$x_1$}
+  \makenode{x2}{$x_2$}
+  \makedots{x2}{xD}{0.5}{10mm}{1mm}
+  \makenode{xD}{$x_D$}
+
+  \pgfsetlinewidth{0.3mm}
+
+  \directededges
+  \edge{y1}{xh1}
+  \edge{y1}{xh2}
+  \edge{y1}{xhD}
+  
+  \edge{yK}{xh1}
+  \edge{yK}{xh2}
+  \edge{yK}{xhD}
+
+  \edge{x1}{y1}
+  \edge{x2}{y1}
+  \edge{xD}{y1}
+  
+  \edge{x1}{yK}
+  \edge{x2}{yK}
+  \edge{xD}{yK}
+
+  \pgfputat{\pgfxy(10,9.5)}{\pgfbox[left,center]{%
+      \PineGreen{\mathversion{bold}$\left.%
+	\vrule height2.5cm depth2.5cm width0pt%
+	\right\}$\alignmiddle{\shortstack{decoder\\ ``generation''}}}}}
+
+  \pgfputat{\pgfxy(10,4.5)}{\pgfbox[left,center]{%
+      \Red{\mathversion{bold}$\left.%
+	\vrule height2.5cm depth2.5cm width0pt%
+	\right\}$\alignmiddle{\shortstack{encoder\\ ``recognition''}}}}}
+
+
+\end{pgfpicture}
+
+

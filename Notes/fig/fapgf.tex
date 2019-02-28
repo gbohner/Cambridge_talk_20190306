@@ -1,0 +1,69 @@
+
+
+\begin{pgfpicture}{0cm}{0cm}{10cm}{8cm}
+  
+  % node circle radius
+  \def\rad{0.75cm}
+
+  % ellipses
+  \def\makedots#1#2#3#4#5{% start/end/fraction/spacing/dotsize
+    \pgfnodelabelrotated{#1}{#2}[#3][0pt]{%
+      \pgfcircle[fill]{\pgfpoint{-#4}{0mm}}{#5}
+      \pgfcircle[fill]{\pgforigin}{#5}
+      \pgfcircle[fill]{\pgfpoint{#4}{0mm}}{#5}
+    }}
+    
+
+  % draw a node
+  \def\makenode#1#2{%
+    \pgfcircle[stroke]{\pgfnodecenter{#1}}{\rad}
+    \pgfputat{\pgfnodecenter{#1}}{\pgfbox[center,center]{#2}}
+  }
+
+  \def\edge#1#2{%
+    \pgfnodeconnline{#1}{#2}
+  }
+
+  \def\directededges{%
+    \pgfclearstartarrow
+    \pgfsetendarrow{\pgfarrowsingle}
+  }
+  \def\undirectededges{%
+    \pgfclearstartarrow
+    \pgfclearendarrow
+  }
+
+
+
+  % where the nodes are
+  \pgfnodecircle{y1}[virtual]{\pgfxy(2,7)}{\rad}
+  \pgfnodecircle{yK}[virtual]{\pgfxy(8,7)}{\rad}
+  \pgfnodecircle{x1}[virtual]{\pgfxy(1,2)}{\rad}
+  \pgfnodecircle{x2}[virtual]{\pgfxy(3,2)}{\rad}
+  \pgfnodecircle{xD}[virtual]{\pgfxy(9,2)}{\rad}
+
+  \pgfsetlinewidth{0.5mm}
+
+  \makenode{y1}{$y_1$}
+  \makedots{y1}{yK}{0.5}{10mm}{1mm}
+  \makenode{yK}{$y_K$}
+
+  \makenode{x1}{$x_1$}
+  \makenode{x2}{$x_2$}
+  \makedots{x2}{xD}{0.5}{10mm}{1mm}
+  \makenode{xD}{$x_D$}
+
+  \pgfsetlinewidth{0.3mm}
+
+  \directededges
+  \edge{y1}{x1}
+  \edge{y1}{x2}
+  \edge{y1}{xD}
+  
+  \edge{yK}{x1}
+  \edge{yK}{x2}
+  \edge{yK}{xD}
+
+\end{pgfpicture}
+
+
