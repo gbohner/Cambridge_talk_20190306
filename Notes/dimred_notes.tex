@@ -9,10 +9,56 @@
 \usepackage{hyperref}
 
 \usepackage{amssymb}
+\usepackage{amsmath}
+
+\usepackage{tcolorbox} % Highlights text
+
+
+
+% Defines
+
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+
+\newcommand{\highlightbox}[1]{\colorbox{mysteelblue}{#1}}
+
+
+\newcommand{\data}{\mathcal D}
+
+\newcommand{\vecu}{\vec{u}}
+\newcommand{\vecv}{\vec{v}}
+\newcommand{\vecx}{\vec{x}}
+\newcommand{\vecxbar}{\vec{\overline{x}}}
+\newcommand{\vecy}{\vec{y}}
+\newcommand{\vecyhat}{\vec{\hat{y}}}
+\newcommand{\vecz}{\vec{z}}
+
+\def\longhorz{\text{\vrule width3ex height.55ex depth-0.45ex}}
+\def\longvert{\text{\vrule width.1ex height3ex depth0ex}}
+
+\def\llongdash{\text{\vrule width6ex height.55ex depth-0.45ex}}
+\def\llongvert{\text{\vrule width.1ex height6ex depth0ex}}
+
+\def\lllongdash{\text{\vrule width9ex height.55ex depth-0.45ex}}
+\def\lllongvert{\text{\vrule width.1ex height9ex depth0ex}}
+
+
+\def\ldashcolvector#1{\begin{array}{c}\longvert\\#1\\ \longvert\end{array}}
+\def\ldashrowvector#1{\longdash\; #1 \; \longdash}
+
+\def\lldashcolvector#1{\begin{array}{c}\llongvert\\#1\\ \llongvert\end{array}}
+\def\lldashrowvector#1{\llongdash\; #1 \; \llongdash}
+
+\def\llldashcolvector#1{\begin{array}{c}\lllongvert\\#1\\ \lllongvert\end{array}}
+\def\llldashrowvector#1{\lllongdash\; #1 \; \lllongdash}
+
+
 
 \begin{document}
 
 \maketitle
+
+\tableofcontents
 
 
 \section{The goals of dimensionality reduction}
@@ -39,8 +85,8 @@ Finding pure examples of specific dimensionality reduction applications is diffi
 
 \begin{figure}[h!]
 \centering
-\includegraphics[angle=-90,origin=c, height=0.7\linewidth, width=0.73\textwidth]{swiss-unroll-distance}
-\\ \vspace{-3cm}
+\includegraphics[width=0.73\textwidth]{swiss-unroll-distance}
+\\ 
 \includegraphics[width=0.5\linewidth]{bat_neurons_nature14031-f3} 
 \caption{Examples for manifold estimation. (top) Swiss roll artificial dataset shows the concepts of a 2D manifold embedded in 3D (color purely serves as visual aid). (bottom) Comparing different manifold hypotheses (spherical vs toroidal) in behaving bats to explain neural variability \emph{(Finkelstein et al, Nature 2015)}}
 \end{figure} 
@@ -105,18 +151,231 @@ Most often dimensionality reduction methods will serve multiple of the above goa
 
 \section{Mathematical concepts}
 
+\textbf{Goal:} Find the manifold.\\
+
+More precisely, find $\mathbf{y}_i \in \mathbb{R}^{D_y} ,\; (D_y < D_x)$ so that $\mathbf{y}_i$ parameterises the location of $\mathbf{x}_i$ on the manifold.
+
+\begin{center}
+\includegraphics[width=0.7\linewidth]{dimred_manifold_embed}	
+\end{center}
+
+
+\textbf{Core ideas:}
+    \begin{itemize}
+    \item preserve ``local'' structure
+    \item preserve ``information''
+    \end{itemize}
+
 \subsection{Linear methods}
 (PCA, MDS)
+\\
 
-The primary linear methods for dimensionality reduction are PCA (Principal component analysis) and MDS (Multi-dimensional scaling). They are both matrix factorisation methods, but may be applied to different statistics of the input dataset (PCA acts on the scatter matrix [scaled covariance matrix], whereas MDS acts on the Gram matrix [a set of similarity measures]). 
+Let $\mathbf{y}_i = P^\top \mathbf{y}_i$ for a projection matrix $P^\top$.\\[1ex]
 
-Data points should be thought of as $D_x$ x $1$ column vectors (even images, if my image dimensions are $w$ x $h$, for these methods I just think of them as a single vector with $D_x = w*h$).
+$P \in \mathbb{R}^{D_x\times D_y}$ defines a linear mapping from data to manifold, and vice versa.  \\[1ex]
 
-A collection of data points can thus be represented as a matrix, where each column is a data point
 
-$$ X \in \mathbb{R}^{D_x\times N} $$
+Linearity
+\begin{itemize}
+\item preserves local structure  
+\item preserves global structure
+\end{itemize}
 
-$$ x_i = X[:,i] $$
+
+
+
+\subsubsection{PCA - Principal component analysis}
+
+\textbf{Idea:} look for projection that keeps data as spread out as possible
+$\Rightarrow$  most variance, means it preserves most "information" \emph{(Knowing the location of a point along a direction where points are more spread out helps us identify the point more!)}
+
+\vspace{0.5cm}
+
+\begin{tcolorbox}[title=PCA algorithm]
+
+PCA directly implements this idea:
+
+\begin{itemize}
+	\item Find the direction with the greatest variance.
+	\item Project the data onto it (residuals now live in $D_x - 1$ dimensions)
+	\item Repeat until a set maximum embedding dimensions, or when residual variance drops below a given threshold
+\end{itemize}
+
+\end{tcolorbox}
+
+A collection of data points 
+
+$$\{\ \mathbf{x}_i \in \mathbb{R}^{D_x\times N} \}_{i=1}^N $$
+
+can be represented as a matrix, where each column is a data point
+
+$$ [\ \mathbf{x}_1,\  \mathbf{x}_2,\  \cdots,\  \mathbf{x}_N\ ] = \mathbf{X} \in \mathbb{R}^{D_x\times N}$$
+
+PCA then acts as a matrix factorisation on the "scatter matrix", that is the average of outer products, or the scaled empirical covariance matrix
+
+$$ \mathbf{S} = \frac{1}{N}\sum_{i=1}^N (\mathbf{x}_i - \mathbf{x_{\textrm{mean}}})(\mathbf{x}_i - \mathbf{x_{\textrm{mean}}})^\top = \frac{1}{N} \mathbf{X}_c\mathbf{X}_c^\top $$
+
+
+ In general, the principal components are exactly the eigenvectors of the empirical covariance matrix $\mathbf{S}$, ordered by decreasing eigenvalue. 
+ 
+ The PCs are the columns of the projection matrix $P$, and they define a $D_y$ dimensional linear manifold. Each $\mathbf{y}_i$ represent a set of coordinates on the low-dimensional manifold.
+ 
+  \clearpage
+
+\begin{tcolorbox}[title=PCA uses \#1]
+
+ We can compute the $\mathbf{y}_i$, the \textbf{"coordinates on the embedded manifold"} via the projection matrix:
+ 
+$$\mathbf{y}_i = P^\top \mathbf{x}_i$$
+
+This emphasizes the use of PCA for the following goals:
+
+\begin{itemize}
+	\item Manifold discovery (find and parametrise a low dimensional manifold to project into)
+	\item Feature discovery (The discovered PCs - the columns of the $P$ projection matrix) are often meaningful, and may be interpreted.
+	\item Visualisation - The high dimensional data may be shown as embedded in low-D, with keeping as much "information" as possible (PCA is the optimal linear method).
+\end{itemize}
+
+\begin{center}
+\includegraphics[width=0.75\linewidth]{dimred_pca_project}	
+\end{center}
+
+
+\end{tcolorbox}
+
+\clearpage
+
+
+\vspace{1cm}
+
+\begin{tcolorbox}[title=PCA uses \#2]
+
+But also we can find a \textbf{"reconstruction"} of the original point via projecting back from the embedding
+
+$$\hat{\mathbf{x}}_i = P \mathbf{y}_i, $$ 
+
+and combining both operations, we can estimate a \textbf{"lossy reconstruction"} of a data point $\mathbf{x}_i$:
+
+$$ \hat{\mathbf{x}}_i = P P^\top \mathbf{x}_i $$
+
+This gives rise a number of interesting views of PCA (and dimensionality reduction in general), as it can be used for
+
+\begin{itemize}
+	\item Denoising ($\hat{\mathbf{x}}$ is a less noisy version of $\mathbf{x}$)
+	\item Compression (even though we accept $\hat{\mathbf{x}}$ as imperfect, representing only $\mathbf{y}$ and $P$ may take significantly less space, for eg. jpeg format)
+	\item Autoencoding is basically the same as denoising, but we assume the embedding and the reconstrucing projections may be different (even though in PCA they are transposes of one-another). \emph{A linear autoencoder neural network trained to minimise squared error learns to perform PCA (Baldi \& Hornik, 1989).}
+\end{itemize}
+
+
+\hspace{2cm}\includegraphics[width=0.8\linewidth]{dimred_pca_autoencode}	
+\end{tcolorbox}
+
+\clearpage
+
+There are a number of extensions to PCA, that target different issues:
+
+\begin{itemize}
+	\item PCA assumes that noise only affects "out-of-manifold" dimensions, and all dimensions are weighted equally.
+	\begin{itemize}
+		\item pPCA (probabilistic PCA) assumes that noise is isotropic (affects all dimensions equally), and takes it into account when estimates the signal
+		\item FA (factor analysis) allows for independent noise along each dimension
+	\end{itemize}
+	\item The autoencoder view is only optimal if the projections are linear. Non-linear autoencoders (such as multilayer neural networks) are implementing the same idea - to learn compressed, yet effective representations - much more powerfully.
+\end{itemize} 
+
+
+\subsubsection{MDS - Multidimensional scaling}
+
+Suppose all we were given were distances or symmetric
+``dissimilarities'' $\Delta_{ij}$.
+
+\[
+\Delta =
+\begin{bmatrix}
+  0 & \Delta_{12} & \Delta_{13} & \Delta_{14} \\
+  \Delta_{12} & 0 & \Delta_{23} & \Delta_{24} \\
+  \Delta_{13} & \Delta_{23} & 0 & \Delta_{34} \\
+  \Delta_{14} & \Delta_{24} & \Delta_{34} & 0 \\
+\end{bmatrix}
+\]
+
+\vspace{0.5cm}
+
+\textbf{Goal}: Find vectors $\mathbf{y}_i$ such that $\| \mathbf{y}_i - \mathbf{y}_j
+\| \approx \Delta_{ij}$. 
+
+\vspace{0.5cm}
+
+This is called \textbf{Multidimensional Scaling (MDS)}.
+
+\vspace{0.5cm}
+Given the some numeric data $\mathbf{X}$, we can compute the Euclidean distances $\Delta_{ij} = \| \mathbf{x}_i - \mathbf{x}_j \| $. The resulting optimal MDS embedding (that now attempts to keep the distances intact, rather than the maximising the variance retained like PCA) is exactly \textbf{equivalent to the PCA embedding!} This is called a \textbf{"dual representation"}.
+
+\begin{tcolorbox}[title=MDS advantages]
+
+Why would then we ever use MDS then?
+% Nice summary: https://cseweb.ucsd.edu/~saul/papers/smdr_ssl05.pdf
+
+\vspace{0.5cm}
+ 
+Representing data as purely the pairwise dissimilarities between data points is a very powerful idea:
+
+\begin{itemize}
+	\item  (nonmetric MDS) We can work on arbitrary, non-numeric datasets as well, as long as we can somehow compute pairwise dissimilarities (see kernel PCA below). 
+	\item (metric graph-based MDS) We can replace the Euclidean distances with other distance calculations, that lead to other algorithms:
+	\begin{itemize}
+		\item[$\rightarrow$] Isomap uses approximate geodesic distances (distances along an estimated non-linear manifold)
+		\item[$\rightarrow$] Maximum Variance Unfolding (MVU) preserves only distances amongst k nearest neighbours%, then maximises variance given those constraints
+		\item[$\rightarrow$] Locally linear embedding (LLE) defines non-symmetric distances that represent local linear reconstructability  % preserves local "linear reconstructability" amongst k nearest neighbours (more on this later).
+	\end{itemize} 
+	\item (kernel PCA) The distance preservation problem can actually be rewritten in a different form, that attempts to minimise the difference in inner products (Gramian matrices) in the original and embedding spaces:
+	
+	$$ \argmin_{\{\, \mathbf{y}_i\, \}_{i=1}^N} \sum_{i=1}^N\sum_{j=1}^N (\mathbf{x}_i^\top \mathbf{x}_j - \mathbf{y}_i^\top \mathbf{y}_j ) $$
+	
+	A popular non-linear extension is to replace the inner products $\mathbf{x}_i^\top \mathbf{x}_j$ with a positive definite kernel function $k(\mathbf{x}_i, \mathbf{x}_j)$, and solve for $\mathbf{y}$ vectors that preserve these modified set of inner products. 
+	
+	\vspace{0.5cm}
+	The popular metric kernel choices ( Gaussian or Polynomial ) are often not well suited for dimensionality reduction. The graph-based algorithms can be seen as a special case of kernel PCA with approximate data-dependent graph kernels (that are defined by neighborhood relationships).
+	
+	\vspace{0.5cm}
+	We can also define kernels over non-metric input spaces (such as bag of words for text mining), which lead 
+	
+	
+\end{itemize}
+
+\end{tcolorbox}
+
+
+\subsection{Non-linear methods}
+
+\subsubsection{Isomap}
+
+\subsubsection{LLE}
+
+\subsubsection{t-SNE}
+
+
+\section{Application to "Frey Face" dataset}
+
+Interactive python code to gain intuition
+
+\section{Application to scRNA-seq dataset}
+
+Analysis via various dimensionality reduction method and group discussion on results
+
+\section{Dimensionality reduction for DNA microscopy outputs}
+
+TODO
+
+
+\section{Overview}
+
+
+
+
+%$$ \mathbf{x}_i = \mathbf{X}[:,i] $$
+
+
 
 
 
