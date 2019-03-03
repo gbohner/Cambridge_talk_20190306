@@ -1,5 +1,6 @@
 # Perform various dimensionality reduction analyses on scRNA-seq data
-setwd("~/Dropbox (Personal)/Documents/Applications/Cambridge2019_Gaurav/Cambridge_talk_20190306/Code/R")
+#setwd("~/Dropbox (Personal)/Documents/Applications/Cambridge2019_Gaurav/Cambridge_talk_20190306/Code/R")
+
 
 # Load libraries
 library(magrittr) # Pipe %>% operation for clean coding
