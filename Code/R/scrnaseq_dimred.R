@@ -1,6 +1,8 @@
 # Perform various dimensionality reduction analyses on scRNA-seq data
 #setwd("~/Dropbox (Personal)/Documents/Applications/Cambridge2019_Gaurav/Cambridge_talk_20190306/Code/R")
-
+#source("/shared/setup.R")
+# Set my personal .libPaths to install and load things correctly
+# .libPaths(new="/usr/local/lib/R/site-library/3.5")
 
 # Load libraries
 library(magrittr) # Pipe %>% operation for clean coding
@@ -11,6 +13,8 @@ library(ggbiplot)
 library(plotly)
 
 library(sparsepca)
+
+library(scran)
 
 #library(tidyverse)
 
@@ -38,7 +42,7 @@ data_zeisel_subset <- data_zeisel[
     (
       gene_count_variances %>% 
         sort(decreasing = TRUE)
-      )[1:200]
+      )[1:5000]
     ),]
 data_zeisel_subset
 
@@ -86,7 +90,7 @@ for (list_elem in names(results_spca)){
 
 
 # Plot PCA and Color by identified group (result of clustering)
-P2 <- ggbiplot(results_prcomp_normalcounts, #results_spca_show,
+P2 <- ggbiplot(results_prcomp, #results_spca_show,
                obs.scale = 1, 
                var.scale=1,
                ellipse=F,

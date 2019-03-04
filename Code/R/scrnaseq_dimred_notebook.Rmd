@@ -1,0 +1,271 @@
+---
+title: "scRNA-seq analysis via Dimensionality reduction"
+output:
+  html_notebook:
+    df_print: paged
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r echo=FALSE}
+# Set libraries path
+.libPaths(new="/usr/local/lib/R/site-library/3.5")
+
+# Set base knitr options
+library(knitr)
+opts_chunk$set(
+  message=FALSE,
+  warning=FALSE,
+  max.print = 20,
+  rownames.print =TRUE
+  )
+
+```
+
+
+### Technical comments
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. You can also view the current state of the notebook as a well-formatted HTML document, if you click preview just above this document.
+
+Try executing a chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. You can also run the next chunk of code via *Cmd+Alt+`*. (These commands are valid on Mac, might differ on Windows)
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed. If you wish to get a full-fledged HTML output (that includes the interactive plots inside the document, rather than in seperate viewer windows), choose *Knit to HTML* instead of the *Preview Notebook* button.
+
+
+# Loading libraries
+
+In R (and many other programming language) reusable code written by others is distributed via libraries. In order to use those pieces of code, we first need to install the packages (this has been done previously for all users, as it takes 2+ hours to install all required packages), then we need to load them within our current session.
+
+```{r load libraries, message=FALSE, warning=FALSE}
+
+# Load libraries
+library(magrittr) # Pipe %>% operation for clean coding
+library(SingleCellExperiment) # Data container (https://bioconductor.org/packages/release/bioc/vignettes/SingleCellExperiment/inst/doc/intro.html)
+library(pcaMethods) # Linear DimRed methods (PCA and extensions)
+library(RDRToolbox) # Non-linear DimRed methods (LLE, Isomap)
+library(ggbiplot)
+library(plotly)
+
+library(sparsepca)
+
+library(scran) # scRNA-seq methods, By Aaron Lun, Cambridge researcher
+
+library(tidyverse)
+
+library(printr)
+
+
+cat("Libraries successfully loaded\n")
+
+```
+
+# Reading and understanding the data
+
+
+
+```{r}
+# Read the data
+data_zeisel <- readRDS("zeisel.rds")
+
+# Get basic information of the data
+print(data_zeisel)
+
+# Gene statistics
+print(as_tibble(rowData(data_zeisel), rownames="gene_id"))
+
+# Cell statistics
+print(as_tibble(colData(data_zeisel), rownames="cell_id"))
+```
+
+
+# Reducing dimensionality of the data
+
+#### Step 1 - Remove uninformative genes
+
+The easiest way to reduce the amount of our data is to select only a subset of the recorded genes to analyse.
+
+Before we remove anything, we want to know in the end, how much information we are removing from the data by the subsetting of genes. To do this, we should first know, how much information is in the data. An easy proxy of "information" that we'll use today is the amount of Variance in the data.
+
+```{r}
+
+# In order to compute sample-wise variance, we need to center the data 
+# (Column-wise, so basically find the mean of all data and substract that from each data point to serve as the new origin)
+
+center_colmeans <- function(X) {
+    Xmean = colMeans(X)
+    X - rep(Xmean, rep.int(nrow(X), ncol(X)))
+}
+
+# Get total variance as the trace of the covariance matrix (but to save computation, we can rotate elements in trace as Tr[X X^T] = Tr[X^T X], then realise that this is just = sum(colSums(Xc^2)) )
+get_total_matrix_variance <- function(X){
+  Xc <- center_colmeans(X) 
+  sum(colSums(Xc^2))
+}
+
+# Write a convenience function that directly computes the variance in our SCE data
+get_total_data_variance <- function(sce_data, logcount = TRUE){
+  if (logcount){
+    sce_data %>% 
+      logcounts() %>%
+      get_total_matrix_variance() ->
+      out
+  } else {
+    sce_data %>% 
+      counts() %>%
+      get_total_matrix_variance() ->
+      out
+  }
+  
+  # Return out
+  out
+}
+
+
+# Get total variance in the (log counts) data
+total_logcounts_variance <- get_total_data_variance(data_zeisel)
+
+sprintf(paste0(
+  "The total variance in the logcounts data is ", 
+  get_total_data_variance(data_zeisel)
+  ))
+
+```
+
+We may then remove genes that have very low total counts in the data:
+
+```{r}
+# We first just remove the genes that have to small total counts across the whole dataset.
+min_total_count_per_gene = 25
+data_zeisel %>% 
+  counts() %>% 
+  rowSums() -> 
+  tmp_gene_total_counts
+  
+data_zeisel[
+  tmp_gene_total_counts >= min_total_count_per_gene, 
+] ->
+  data_zeisel_lowcount
+  
+
+# Of course let's check how much information we still have:
+sprintf(paste0(
+  "After removing low count genes, we retain ", 
+  format(
+    get_total_data_variance(data_zeisel_lowcount) / total_logcounts_variance *100, 
+    digits=3
+  ),
+  "%% of the variance." 
+  ))
+
+sprintf(paste0(
+  "We now have ", nrow(data_zeisel_lowcount), " / ", nrow(data_zeisel), " genes remain"
+  ))
+
+```
+
+Next we check from the remaining genes, which one on average have the most variation in fold-changes across the different cells. As our scientific goal currently is to find a way to characterise how cells differ from one-another, this is a reasonable thing to do.
+
+
+```{r}
+
+how_many_genes_to_keep = 500
+
+# Next we check from the remaining genes, which one on average have the most fold_changes
+data_zeisel_lowcount %>% 
+  logcounts() %>%  # logcounts assay
+  rowVars -> 
+  gene_count_variances # save row-wise variances
+
+# Add back the names (unfortunately rowVars deletets them)
+names(gene_count_variances) <- rownames(data_zeisel_lowcount)
+ 
+# Do the subsetting based on top N variances (by sorted gene name)
+data_zeisel_lowcount[
+  names((gene_count_variances %>% sort(decreasing = TRUE))[1:how_many_genes_to_keep]),
+  ] ->
+  data_zeisel_topgenes
+
+data_zeisel_subset <- data_zeisel_topgenes # Just for compatibility with historical code.
+
+# Of course let's check how much information we still have:
+sprintf(paste0(
+  "After keeping only the top ", how_many_genes_to_keep, " genes, we retain ", 
+  format(
+    get_total_data_variance(data_zeisel_topgenes) / total_logcounts_variance *100, 
+    digits=3
+  ),
+  "%% of the variance." 
+  ))
+
+
+```
+
+
+```{r pca_plotting_function, echo=FALSE}
+
+plot_pca_result <- function(pca_result, dataset=NULL, show_celltype = FALSE, interactive=TRUE){
+  # Plot PCA
+  if (!show_celltype){
+      P2 <- ggbiplot(pca_result,
+                     obs.scale = 1, 
+                     var.scale=1,
+                     ellipse=F,
+                     circle=F,
+                     varname.size=0.1,
+                     var.axes=F,
+                     groups=rep(1, times=dim(results_prcomp$x)[1]), 
+                     alpha=0) + 
+        theme(legend.position="none")
+      P2$layers <- c(geom_point(#aes(color=data_zeisel_subset$cell_type1), 
+                                cex=1.0, alpha=0.3), P2$layers)
+  } else {
+    if (is.null(dataset)) stop("Cannot show cell types, no the \"dataset\" input is missing. Try again with show_celltype=FALSE, or supply the dataset the PCA analysis was ran on")
+    
+    P2 <- ggbiplot(pca_result,
+                       obs.scale = 1, 
+                       var.scale=1,
+                       ellipse=F,
+                       circle=F,
+                       varname.size=0.1,
+                       var.axes=F,
+                       groups=dataset$cell_type1, 
+                       alpha=0)
+    P2$layers <- c(geom_point(aes(color=dataset$cell_type1), 
+                              cex=1.0, alpha=0.3), P2$layers)
+  }
+  
+  # Return the ggplot_object
+  if (interactive){
+    htmltools::html_print(P2 %>% ggplotly(), viewer = getOption("browser", utils::browseURL))
+  }
+  
+  P2
+}
+
+```
+
+
+Now we may wish to do some more advanced dimensionality reduction, that takes into account not just properties of single genes, but also how they interact. Principal Component Analysis (PCA) is one such methods, it attempts to reduce the dimensionality of the data not just by getting rid of single genes, but by finding linear combinations of gene expression patterns that are informative, and keep most of the variance intact.
+
+```{r}
+# Run PCA on the data
+results_prcomp <- prcomp(
+  data_zeisel_topgenes %>% logcounts() %>% t()
+)
+
+results_prcomp_normalcounts <- prcomp(
+  data_zeisel_topgenes %>% counts() %>% t()
+)
+
+# Plot log counts PCA plot
+tmp_plot_left <- plot_pca_result(results_prcomp, interactive = FALSE)
+
+# Plot normal counts PCA plot
+tmp_plot_right <- plot_pca_result(results_prcomp_normalcounts, interactive = FALSE)
+gridExtra::grid.arrange(tmp_plot_left, tmp_plot_right, ncol=2)
+```
+
