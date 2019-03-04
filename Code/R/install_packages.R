@@ -15,6 +15,8 @@ BiocManager::install("pcaMethods", version = "3.8")
 
 # Single-cell RNA seq analysis package (Aaron Lun, Cambridge!)
 BiocManager::install("scran", version = "3.8")
+# Installs scater, scater needs pheatmap:
+install.packages("pheatmap")
 
 # Plot the results of PCA
 #install.packages("devtools")
