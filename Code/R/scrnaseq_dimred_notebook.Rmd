@@ -1,12 +1,12 @@
 ---
 title: "scRNA-seq analysis via Dimensionality reduction"
 output:
-  html_document:
-    df_print: paged
   html_notebook:
     df_print: paged
+  html_document:
+    df_print: paged
 editor_options:
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ```{r echo=FALSE}
@@ -21,7 +21,6 @@ opts_chunk$set(
   max.print = 20,
   rownames.print =TRUE
   )
-
 ```
 
 
@@ -73,22 +72,16 @@ data_zeisel <- readRDS("zeisel.rds")
 
 # Get basic information of the data
 print(data_zeisel)
-
-# Gene statistics
-print(as_tibble(rowData(data_zeisel), rownames="gene_id"))
-
-# Cell statistics
-print(as_tibble(colData(data_zeisel), rownames="cell_id"))
 ```
 
 
 # Reducing dimensionality of the data
 
-#### Step 1 - Remove uninformative genes
+### Step 1 - Remove uninformative genes
 
 The easiest way to reduce the amount of our data is to select only a subset of the recorded genes to analyse.
 
-Before we remove anything, we want to know in the end, how much information we are removing from the data by the subsetting of genes. To do this, we should first know, how much information is in the data. An easy proxy of "information" that we'll use today is the amount of Variance in the data.
+Before we remove anything, we want to know in the end, how much information we are removing from the data by the subsetting of genes. To do this, we should first know, how much information is in the data. An easy proxy of "information" that we'll use today is the amount of Variance in the gene expression counts across cells data.
 
 ```{r}
 
@@ -153,17 +146,14 @@ data_zeisel[
 
 # Of course let's check how much information we still have:
 sprintf(paste0(
-  "After removing low count genes, we retain ", 
-  format(
+  "We now have ", nrow(data_zeisel_lowcount), " out of ", nrow(data_zeisel), " genes remaining. ", 
+  "After removing low count genes, we retain ", format(
     get_total_data_variance(data_zeisel_lowcount) / total_logcounts_variance *100, 
     digits=3
   ),
   "%% of the variance." 
   ))
 
-sprintf(paste0(
-  "We now have ", nrow(data_zeisel_lowcount), " / ", nrow(data_zeisel), " genes remain"
-  ))
 
 ```
 
@@ -207,6 +197,7 @@ sprintf(paste0(
 
 ```{r pca_plotting_function, echo=FALSE}
 
+# Write a plotting function for our PCA results
 plot_pca_result <- function(pca_result, dataset=NULL, show_celltype = FALSE, interactive=TRUE){
   if (is.null(pca_result$x)) pca_result$x <- pca_result$scores
   # Plot PCA
@@ -243,10 +234,15 @@ plot_pca_result <- function(pca_result, dataset=NULL, show_celltype = FALSE, int
   if (interactive){
     P2_out <- P2
     P2_out$layers[[2]]$mapping$text = aes(text=rownames(pca_result$x))$text # Add cell id as hover text in plotly
+    # Show in new browser tab
     htmltools::html_print(
        P2_out %>% ggplotly(), 
        viewer = getOption("browser", utils::browseURL)
-    )
+    ) 
+    # use default viewer for compile
+    # htmltools::html_print(
+    #    P2_out %>% ggplotly()
+    # )
   }
   
   P2
@@ -254,18 +250,7 @@ plot_pca_result <- function(pca_result, dataset=NULL, show_celltype = FALSE, int
 
 ```
 
-
-```{r}
-
-# # Let's take a look at our expression heatmap
-# data_zeisel_topgenes %>% 
-#   scater::plotHeatmap(
-#     features = 1:dim(.)[1],
-#     cluster_rows = FALSE,
-#     cluster_cols = FALSE
-# )
-
-```
+### Step 2 - Dimensionality reduction via combination of genes
 
 Now we may wish to do some more advanced dimensionality reduction, that takes into account not just properties of single genes, but also how they interact. Principal Component Analysis (PCA) is one such methods, it attempts to reduce the dimensionality of the data not just by getting rid of single genes, but by finding linear combinations of gene expression patterns that are informative, and keep most of the variance intact.
 
@@ -273,29 +258,46 @@ Now we may wish to do some more advanced dimensionality reduction, that takes in
 # Run PCA on the data
 results_prcomp <- prcomp(
   data_zeisel_topgenes %>% logcounts() %>% t() # Tranpose is necessary because base R algorithms think in data frames, where samples are in rows, and features are in columns 
+  
   # Also for some weird reason pr_comp sdev values are scaled, such that:
   # EV(X*X^T) = results_prcomp$sdev^2*(n_samples-1)
 )
 
 
-plot_pca_result(results_prcomp, interactive = FALSE)
+plot_pca_result(results_prcomp, interactive = TRUE)
 
 ```
 
 
 Now what have we learned, and was this helpful? Not really, interactive mode can point out outliers maybe (although PCA is not very robust to them). And what does PC1 and PC2 really mean?
 
-We can look at what PC1 is:
+We can look at what the loadings for the PC1 axis are:
 
 ```{r}
+# Print PC_i coeffs in 
 i = 1
-as.data.frame(tibble::enframe(results_prcomp$rotation[,i][order(abs(results_prcomp$rotation[,i]), decreasing = TRUE)], value="weight"))
+tmp_cur_pc_sorted <- results_prcomp$rotation[,i][order(abs(results_prcomp$rotation[,i]), decreasing = TRUE)]
+output_string = ""
+for (j in 1:min(length(tmp_cur_pc_sorted), 80)){
+  output_string = paste0(
+    output_string,
+    stringr::str_sub(format(tmp_cur_pc_sorted[j],digits=4), 1, 6),
+    " * ",
+    names(tmp_cur_pc_sorted)[[j]],
+    " + "
+    )
+  if (!mod(j, 4)) output_string = paste0(output_string, "\n")
+}
+
+output_string = stringr::str_sub(output_string, end = -4)
+
+cat(paste0("PC1_coordinate = \n", output_string, "\n + ......"))
 ```
 
 Still not terribly helpful, but this represents some linear combination of (log) gene expressions. It actually means an equation for a single line in the space of all possible expression patterns. For a hypotethical "cell_x", that has expression x_<gene_name> for every gene, this equation would look something like this:
 
 
-$$ \textrm{PC1} ( \textrm{cell_x} ) = 0.15 * x_\textrm{Plp1} +  0.11 * x_\textrm{Trf} - 0.08 * x_\textrm{Snap25} + \dots + 0.0008 * x_\textrm{Slc6a1} \\ = \vec{w}_1 \cdot \vec{x}$$
+$$ \textrm{PC1} ( \textrm{cell_x} ) = 0.15 * x_\textrm{Plp1} +  0.11 * x_\textrm{Trf} - 0.08 * x_\textrm{Snap25} + \dots + 0.0008 * x_\textrm{Slc6a1} $$
 
 Ok so this means that when some of those genes in the equation are upregulated together, and some others are down-regulated at the same time. That's great, I can go test that?! No, not really, this equation involves ALL measured genes, so it is not particularly useful to create new hypothesis.
 
@@ -309,7 +311,7 @@ What can we do about that?
 
 Now with our extra penalty term for using too many genes to explain variance, we can make a trade-off between how much variance our PC1 explains, versus how many genes the $w1$ vector involves to compute that PC1.
 
-```{r}
+```{r message=FALSE}
 
 # Run SPCA with various alpha regularisers to increase sparsity (only 100 genes to make it fast)
 results_spca = tibble(spca_alpha = c(1e-4, 1e-3, 5e-3, 1e-2, 3e-2, 5e-2))
@@ -323,7 +325,8 @@ results_spca %>%
         tmp_data <- data_zeisel_topgenes[1:100,] %>% logcounts() %>% t()
         tmp_out <- sparsepca::spca(
           tmp_data,
-          alpha = a
+          alpha = a,
+          verbose=FALSE
         )
         rownames(tmp_out$loadings) <- colnames(tmp_data)
         rownames(tmp_out$scores) <- rownames(tmp_data)
@@ -358,15 +361,15 @@ results_prcomp_100genes <- prcomp(
 
 results_spca %>%
   mutate(
-    `var_exp_by_pc1_vs_pca_%` = var_explained_pc1 / results_prcomp_100genes$sdev[[1]]^2 *100,
+    `PCA_info_kept_%` = var_explained_pc1 / results_prcomp_100genes$sdev[[1]]^2 *100,
     genes_used_pca = sum(abs(results_prcomp_100genes$rotation[,1]) > 1e-6),
-    `var_exp_by_pc1_vs_orig_%` = var_explained_pc1 * (ncol(data_zeisel)-1) / total_logcounts_variance * 100
+    `orig_data_info_kept` = var_explained_pc1 * (ncol(data_zeisel)-1) / total_logcounts_variance * 100
   ) ->
   results_spca
 
 # Show the results as a tibble
 results_spca %>%
-  select(spca_alpha, `var_exp_by_pc1_vs_pca_%`, genes_used_spca, genes_used_pca,  `var_exp_by_pc1_vs_orig_%` )
+  select(spca_alpha, genes_used_spca, `PCA_info_kept_%`,  genes_used_pca,  `orig_data_info_kept` )
 
 ```
 
@@ -386,7 +389,7 @@ What more we can do with these kinds of results?
 
 ```{r}
 # Plotting function for spca (doesn't have one on its own, need to make a dummy "princomp" object from it)
-get_plottable_spca_obj <- function(spca_fit){
+get_plottable_spca_obj <- function(spca_fit, add_noise_pc2 = 0){
   out <- spca_fit
   class(out) <- "princomp"
   # Fix the variance explained on the axes for plotting (hacky way! Just for getting the correct "variance explained" on plot axes)
@@ -394,63 +397,44 @@ get_plottable_spca_obj <- function(spca_fit){
   out$n.obs = dim(out$scores)[[1]]
   if (!(out$scale)) out$scale = (out$center*0+1)
   class(out$loadings) <- "loadings"
+  
+  # Add noise along PC2 for visualisation purposes
+  out$scores[,2] = out$scores[,2] + rnorm(dim(out$scores)[[1]], 0, add_noise_pc2)
   # Return out
   out
 }
 
 plot_pca_result(
   get_plottable_spca_obj(
-    spca_fit_very_sparse
-    #results_spca$spca_fit[[5]]
+    spca_fit_very_sparse,
+    add_noise_pc2 = 0.5
   ), 
-  interactive = FALSE,
-  dataset = data_zeisel_topgenes, 
+  interactive = TRUE,
+  dataset = data_zeisel_topgenes[1:100,], 
+  show_celltype = FALSE
+)
+
+```
+
+The detected sparse direction only 2 genes (Plp1 and Trf), yet cells are quite spread along this axis! 
+
+I can now quite strongly feel that the expression levels of Plp1 and Trf are significantly different in a group of cells compared to others. This is a testable hypothesis, that I could go back and examine how those cells differ from others (in shape, or electrical activity for example).
+
+Examining the results of the author's clustering algorithm along with our results, we can see that our high-expression level group of cells indeed formed a cluster in their analysis, and were named "Oligodendrocytes", based on some expert knowledge they had. And indeed if we review the literature, we'll see that there has been studies showing these genes are indicative of oligodendrocytes, and are called "myelination genes".
+
+```{r}
+# Now also show cell types
+plot_pca_result(
+  get_plottable_spca_obj(
+    spca_fit_very_sparse,
+    add_noise_pc2 = 0.5
+  ), 
+  interactive = TRUE,
+  dataset = data_zeisel_topgenes[1:100,], 
   show_celltype = TRUE
 )
 
 ```
 
-Examining the results of the author's clustering algorithm along with the detected sparse direction that uses only 2 genes (Plp1 and Trf), I can now quite strongly feel that the expression levels of Plp1 and Trf are significantly different in one group of cells (that they named "Oligodendrocytes" based on some expert knowledge from existing literature) than an other (that they named "Pyramidal neurons").
 
-This is a testable hypothesis (and probably an already existing result, but if not, feel free to go and prove it quickly :) ).
-
-```{r}
-
-# results_spca_all <- lapply(
-#   spca_alpha_vals, 
-#   
-# )
-# 
-# results_prcomp <- prcomp(
-#   data_zeisel_topgenes %>% logcounts() %>% t() 
-#   )
-# 
-# results_prcomp_normalcounts <- prcomp(
-#   normalize(data_zeisel, return_log=FALSE)[names((gene_count_variances %>% sort(decreasing = TRUE))[1:how_many_genes_to_keep]),] %>% 
-#     normcounts() %>%
-#     t()
-# )
-# 
-# # Plot log counts PCA plot
-# tmp_plot_left <- plot_pca_result(results_prcomp, interactive = FALSE, dataset = data_zeisel_topgenes, show_celltype = TRUE)
-# 
-# # Plot normal counts PCA plot
-# tmp_plot_right <- plot_pca_result(results_prcomp_normalcounts, interactive = FALSE, dataset = data_zeisel_topgenes, show_celltype = TRUE)
-# gridExtra::grid.arrange(tmp_plot_left, tmp_plot_right, ncol=2)
-```
-
-
-```{r}
-# Just random notes, delete before lecture
-
-
-
-# # Reproduce log_counts on data_zeisel_topgenes
-# (normalize(data_zeisel)[names((gene_count_variances %>% sort(decreasing = TRUE))[1:how_many_genes_to_keep]),] %>% logcounts())[1:10,1:10]
-
-# # Get normalised counts on data_zeisel_topgenes
-# normalize(data_zeisel, return_log=FALSE)[names((gene_count_variances %>% sort(decreasing = TRUE))[1:how_many_genes_to_keep]),] %>% normcounts()
-
-
-```
 

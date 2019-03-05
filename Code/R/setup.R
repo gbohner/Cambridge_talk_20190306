@@ -17,7 +17,7 @@ curLibPaths[[2]] = paste0(curLibPaths[[2]],"/3.5")
 #source("install_packages.R")
 
 # Open the file that we want to edit
-file.edit("scrnaseq_dimred.R")
+file.edit("scrnaseq_dimred_notebook.Rmd")
 
 
 
